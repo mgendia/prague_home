@@ -38,6 +38,7 @@ class Webscraper:
         for url in unit_urls:         
             unit_id= url.split('/')[-1]
             req= requests.get(self.api_url + '/'+ unit_id).json()
+            
             #Getting nearby locations lat and lon
             nearby= {i :[item for item in req['poi'] if item['name'] == i]\
                 for i in ['Shop', 'Playground', 'Tram', 'Metro', 'Bus', 'Drugstore', 'Medic']}
@@ -55,17 +56,18 @@ class Webscraper:
                 if nearby.get('Drugstore') != [] else None
             medic= (nearby.get('Medic')[0]['lat'], nearby.get('Medic')[0]['lon'])\
                 if nearby.get('Medic') != [] else None 
+            #Getting the unit type and number of bedrooms
             ad_title= req['meta_description'].replace('\xa0', '')
-            if 'Family house' in ad_title:
+            if ('Family house' in ad_title) | ('Villa' in ad_title):
                 unit_type= 'house'
                 num_bedrooms= req.get('recommendations_data').get('room_count_cb')
             elif ('apartment' in ad_title) | ('flat' in ad_title):
                 unit_type= 'apartment'
-                num_bedrooms= re.findall(r'(?<=en/detail/lease/flat/)([a-z0-9\-+]+)(?=/)', url)[0]
-                
+                num_bedrooms= re.findall(r'(?<=en/detail/lease/flat/)([a-z0-9\-+]+)(?=/)', url)[0]               
             else:
                 unit_type= 'other'
                 num_bedrooms= None
+            #Getting the address
             try:
                 address= re.findall(r'(?<= rent )([\w\s-]+)(?=;)', ad_title)[0]
             except:
@@ -84,15 +86,15 @@ class Webscraper:
                         if item['name']== 'Energy Performance Rating']
             energy_class= re.findall(r'(?<=^Class )([a-zA-Z]{1})',
                                     energy_class[0])[0] if energy_class != [] else None
-            for item in req['items']:
-                if item['name']== 'Furnished':
-                    furnished= item['value']
-                elif item['name']== 'Elevator':
-                    elevator= item['value']
+            #Getting the furnished and elevator details
+            furnished= [item['value'] if item['name']== 'Furnished' else None for item in req['items']][0]
+            elevator= [item['value'] if item['name']== 'Elevator' else None for item in req['items']][0]
+            
+            #Getting the pictures
             img_lst= req.get('_embedded').get('images')
             pictures= [img_lst[i].get('_links').get('view').get('href') for i in range(len(img_lst))]
             unit_details.append([url,unit_id, address, unit_type, num_bedrooms, unit_description, 
                                 rent_price, floor_num, usable_area, garage, balcony, terrace,
-                        furnished, elevator, energy_class, shop,
+                                furnished, elevator, energy_class, shop,
                                 playground, tram, bus, metro, drugstore, medic,  pictures])
         return unit_details 
