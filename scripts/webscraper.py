@@ -19,15 +19,12 @@ class Webscraper:
     def __get_units_url(self):
         '''extracts the url of each unit from the target url and
         returns a list of urls'''
-        # soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         soup= BeautifulSoup(self.driver.execute_script("return document.documentElement.outerHTML"), 'lxml')
         unit_urls = [item.get('href') for item in soup.find_all('a',
                                                                 class_= 'title',
                                                                 attrs= {'href': re.compile('^/en/detail/')}
                                                                 )
                     ]
-        # for link in soup.find_all('span', class_='basic'):
-        #     unit_urls.append(self.main_url + link.find('a').get('href'))
         return unit_urls
 
     def extract_units_details(self):
@@ -38,14 +35,9 @@ class Webscraper:
                         'furnished', 'elevator', 'energy_class','Shop', 'Playground', 'tram', 
                         'metro', 'bus', 'drugstore', 'medic','pictures']]
         
-        for url in unit_urls:
-            # self.driver.get(url)
-            # time.sleep(5.0) #sleep to allow the page to load
-            # soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            # soup= BeautifulSoup(self.driver.execute_script("return document.documentElement.outerHTML"), 'lxml')           
+        for url in unit_urls:         
             unit_id= url.split('/')[-1]
             req= requests.get(self.api_url + '/'+ unit_id).json()
-
             #Getting nearby locations lat and lon
             nearby= {i :[item for item in req['poi'] if item['name'] == i]\
                 for i in ['Shop', 'Playground', 'Tram', 'Metro', 'Bus', 'Drugstore', 'Medic']}
@@ -63,20 +55,6 @@ class Webscraper:
                 if nearby.get('Drugstore') != [] else None
             medic= (nearby.get('Medic')[0]['lat'], nearby.get('Medic')[0]['lon'])\
                 if nearby.get('Medic') != [] else None 
-
-            #Extracting unit type and number of bedrooms
-            # ad_title= soup.find_all('title', class_= 'ng-binding')[0].text.replace('\xa0', '')
-            # if 'family house' in ad_title:
-            #     unit_type= 'house'
-            #     num_bedrooms= req.get('recommendations_data').get('room_count_cb')
-            # elif ('apartment' in ad_title) | ('flat' in ad_title):
-            #     unit_type= 'apartment'
-            #     num_bedrooms= re.findall(r'(?<=en/detail/lease/flat/)([a-z0-9\-+]+)(?=/)', url)[0]
-            # else:
-            #     unit_type= 'other'
-            #     num_bedrooms= None
-            # address= re.findall(r'(?>\d+m², )(.+)(?= • Sreality.cz)', ad_title)
-
             ad_title= req['meta_description'].replace('\xa0', '')
             if 'Family house' in ad_title:
                 unit_type= 'house'
@@ -92,24 +70,6 @@ class Webscraper:
                 address= re.findall(r'(?<= rent )([\w\s-]+)(?=;)', ad_title)[0]
             except:
                 address= re.findall(r'(?<= sale )([\w\s-]+)(?=;)', ad_title)[0]
-            
-            
-
-            #Get unit details           
-            # unit_description= soup.find_all('div', class_= 'description ng-binding')[0].text
-            
-            # dictionary= dict()
-            # for item in soup.find_all('li', class_= 'param ng-scope'):
-            #     dictionary[item.find_all('label', class_='param-label ng-binding')[0].text[:-1]] =\
-            #         item.find_all('span', class_= 'ng-binding ng-scope')[0].text.replace('\xa0', '')
-            # rent_price= int(re.findall(r'\d+', dictionary['Total price'])[0])
-            # try:
-            #     floor_num= int(re.findall(r'\d+', dictionary['Floor'])[0])
-            # except:
-            #     floor_num= None
-            # usable_area= int(re.findall(r'\d+', dictionary['Usable area'])[0])
-            # energy_class= re.findall(r'\w+', dictionary['Energy Performance Rating'])[-1]
-
             unit_description= req['text']['value'].replace('\xa0', '')
             rent_price= req.get('recommendations_data').get('price_summary_czk')            
             garage= req.get('recommendations_data').get('garage')
@@ -129,15 +89,6 @@ class Webscraper:
                     furnished= item['value']
                 elif item['name']== 'Elevator':
                     elevator= item['value']
-            
-            
-            # img_soup= soup.find_all('div', class_= 'ob-c-carousel__item')
-            # img_lst= []
-            # for img in img_soup:
-            #     if img.find('img').get('src') != None:
-            #         img_lst.append(img.find('img').get('src'))
-            #     else:
-            #         img_lst.append([i for i in img.find_all('img') if i.get('src') != None][0].get('src'))
             img_lst= req.get('_embedded').get('images')
             pictures= [img_lst[i].get('_links').get('view').get('href') for i in range(len(img_lst))]
             unit_details.append([url,unit_id, address, unit_type, num_bedrooms, unit_description, 
