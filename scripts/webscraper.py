@@ -11,12 +11,11 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 class Webscraper:
-    def __init__(self, main_url, url):
-        self.main_url = main_url
+    def __init__(self, api_url, url):
+        self.api_url = api_url
         self.url = url
         self.driver = webdriver.Chrome()
         self.driver.implicitly_wait(10)
-        self.api_url= 'https://www.sreality.cz/api/en/v2/estates'
 
     def __get_units_url(self):
         '''extracts the url of each unit from the target url and
@@ -31,8 +30,7 @@ class Webscraper:
         #             ]
         unit_urls= []
         for i in tqdm(range(1, num_pages+1)):
-            print('page: ', i)
-            url = self.url.split('?')[0]+ '?page=' + str(i)
+            url = self.url + '&page=' + str(i)
             self.driver.get(url)
             sleep(np.random.uniform(2.0, 2.5))
             innerHTML= self.driver.execute_script("return document.body.innerHTML")
@@ -43,6 +41,7 @@ class Webscraper:
                                                                         )
                             ])
         unit_urls= list(set([link for lst in unit_urls for link in lst]))
+        self.driver.close()
         return unit_urls
 
     def extract_units_details(self):
@@ -56,7 +55,6 @@ class Webscraper:
         for url in tqdm(unit_urls):         
             unit_id= url.split('/')[-1]
             req= requests.get(self.api_url + '/'+ unit_id).json()
-            print(req)
             #Getting nearby locations lat and lon
             nearby= {item.get('name'): (item.get('lat'), item.get('lon')) for item in req.get('poi')}
             shop= nearby.get('Shop')
