@@ -1,30 +1,48 @@
 import selenium as sel
 import pandas as pd
+import numpy as np
 import re
 import os
 import requests
-import time
+import math
+from time import sleep
 from selenium import webdriver
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 class Webscraper:
     def __init__(self, main_url, url):
         self.main_url = main_url
         self.url = url
         self.driver = webdriver.Chrome()
-        self.driver.get(self.url)
         self.driver.implicitly_wait(10)
         self.api_url= 'https://www.sreality.cz/api/en/v2/estates'
 
     def __get_units_url(self):
         '''extracts the url of each unit from the target url and
-        returns a list of urls'''
+        returns a list of urls'''        
+        self.driver.get(self.url)
         soup= BeautifulSoup(self.driver.execute_script("return document.documentElement.outerHTML"), 'lxml')
-        unit_urls = [item.get('href') for item in soup.find_all('a',
-                                                                class_= 'title',
-                                                                attrs= {'href': re.compile('^/en/detail/')}
-                                                                )
-                    ]
+        num_pages= math.ceil(int(soup.find_all(class_= 'numero ng-binding')[-1].text.replace('\xa0', '')) / 20)
+        # unit_urls = [item.get('href') for item in soup.find_all('a',
+        #                                                         class_= 'title',
+        #                                                         attrs= {'href': re.compile('^/en/detail/')}
+        #                                                         )
+        #             ]
+        unit_urls= []
+        for i in tqdm(range(1, num_pages+1)):
+            print('page: ', i)
+            url = self.url.split('?')[0]+ '?page=' + str(i)
+            self.driver.get(url)
+            sleep(np.random.uniform(2.0, 2.5))
+            innerHTML= self.driver.execute_script("return document.body.innerHTML")
+            soup= BeautifulSoup(innerHTML, 'lxml')
+            unit_urls.append([item.get('href') for item in soup.find_all('a',
+                                                                        class_= 'title',
+                                                                        attrs= {'href': re.compile('^/en/detail/')}
+                                                                        )
+                            ])
+        unit_urls= list(set([link for lst in unit_urls for link in lst]))
         return unit_urls
 
     def extract_units_details(self):
@@ -35,9 +53,10 @@ class Webscraper:
                         'furnished', 'elevator', 'energy_class','Shop', 'Playground', 'tram', 
                         'metro', 'bus', 'drugstore', 'medic','pictures']]
         
-        for url in unit_urls:         
+        for url in tqdm(unit_urls):         
             unit_id= url.split('/')[-1]
             req= requests.get(self.api_url + '/'+ unit_id).json()
+            print(req)
             #Getting nearby locations lat and lon
             nearby= {item.get('name'): (item.get('lat'), item.get('lon')) for item in req.get('poi')}
             shop= nearby.get('Shop')
