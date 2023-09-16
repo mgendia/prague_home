@@ -1,1 +1,1 @@
-'1, Frýdlantská 1350, Kobylisy, 182 00 Praha 8, Czechia'
+(50.13009659999999, 14.4785381)
