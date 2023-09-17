@@ -1,0 +1,1 @@
+Shop,Playground,tram,metro,bus,drugstore,medic
