@@ -1,5 +1,5 @@
-name,address,geo
-crossfit praha,"9, Doorbell CrossFit Praha, underground, Malá Štěpánská 1929, Nové Město, 120 00 Praha 2, Czechia","dict_values([50.07667989999999, 14.4227697])"
-crossfit meat factory,"Prvního pluku 8a, 180 00 Praha 8-Karlín, Czechia","dict_values([50.0912716, 14.4427717])"
-crossfit 14000 south,"19, Pod Višňovkou 1663, Krč, 140 00 Praha 4, Czechia","dict_values([50.03063150000001, 14.4512572])"
-crossfit committed,"Koněvova 136, 130 00 Praha 3, Czechia","dict_values([50.0908818, 14.471748])"
+name;address;geo
+crossfit praha;9, Doorbell CrossFit Praha, underground, Malá Štěpánská 1929, Nové Město, 120 00 Praha 2, Czechia;(50.07667989999999, 14.4227697)
+crossfit meat factory;Prvního pluku 8a, 180 00 Praha 8-Karlín, Czechia;(50.0912716, 14.4427717)
+crossfit 14000 south;19, Pod Višňovkou 1663, Krč, 140 00 Praha 4, Czechia;(50.03063150000001, 14.4512572)
+crossfit committed;Koněvova 136, 130 00 Praha 3, Czechia;(50.0908818, 14.471748)
