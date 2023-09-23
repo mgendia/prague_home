@@ -6,6 +6,7 @@ import itertools
 import ast
 import pickle
 
+from pathlib import Path
 from datetime import time, datetime, timedelta
 
 
@@ -14,7 +15,7 @@ from datetime import time, datetime, timedelta
 class gmaps:
     def __init__(self):
         self.gmaps = googlemaps.Client(key=os.environ.get('PragueHouseGMAPKey'))
-        self.school_address= ast.literal_eval(open('..\data\school_address.txt', 'r').read())
+        self.school_address= ast.literal_eval(open(Path('data\school_address.txt'), 'r').read())
 
     def _get_home_location(self, address):
         '''returns the latitude and longitude of the address'''
@@ -101,7 +102,7 @@ class gmaps:
         assert len(mode) > 0, 'mode must have at least one element'
         assert type(origin) == tuple, 'origin must be a tuple'
         
-        with open('../data/crossfit.pkl', 'rb') as f:
+        with open(Path('data/crossfit.pkl'), 'rb') as f:
             crossfit= pickle.load(f)
         combination_lst= itertools.product(zip(crossfit.name, crossfit.geo), mode)
         details_lst= []

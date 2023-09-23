@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import math
-import itertools
-import os
+import pickle
 
+from pathlib import Path
 from webscraper import Webscraper
 from gmaps import gmaps
 
@@ -11,11 +11,18 @@ class Pipeline:
     def __init__(self,
                 url,
                 api_url,
-                data_file_path:str= '../data/data.pkl',
-                nearby_places_path:str= '../data/nearby_places.txt'):
+                data_file_path:str= Path('data/data.pkl'),
+                nearby_places_path:str= Path('data/nearby_places.txt')):
         self.url= url
         self.api_url= api_url
-        self.data= pd.read_pickle(data_file_path)
+        self.data_file_path= data_file_path
+        if Path(data_file_path).is_file():
+            with open(data_file_path, 'rb') as f:
+                self.data= pickle.load(f)
+            # self.data= pd.read_pickle(data_file_path)
+        else:
+            self.data= pd.DataFrame()
+        self.new_data= None
         self.scrapper= Webscraper(self.api_url, self.url)
         self.gmaps= gmaps()
         with open(nearby_places_path, 'r') as f:
@@ -48,30 +55,30 @@ class Pipeline:
 
     def update_data(self, mode:list= ['transit', 'walking']):
         '''updates the dataframe with the new data'''
-        self.__check_df_params()
+        # self.__check_df_params()
         unique_links= self.__get_unique_links()
         if len(unique_links) == 0:
             print('No new units to update')
         else:
-            new_data= self.scrapper.extract_units_details(unique_links)
-            self.data= pd.concat([self.data, new_data], ignore_index= True)
-            self.data.insert(self.data.columns.get_loc('Address')+1, 'home_geo',
-                            self.data.Address.map(self.gmaps._get_home_location))
+            details= self.scrapper.extract_units_details(unique_links)
+            self.new_data= pd.DataFrame(details[1:], columns= details[0])
+            self.new_data.insert(self.new_data.columns.get_loc('Address')+1, 'home_geo',
+                            self.new_data.Address.map(self.gmaps._get_home_location))
             #adding the nearby journey details
             for col in self.nearby_places:
                 for m in mode:
                     if m == 'tranist':
-                        self.data[f'{col}_{m}_dur'], self.data[f'{col}_{m}_dist'], self.data[f'{col}_{m}_twalk']=\
+                        self.new_data[f'{col}_{m}_dur'], self.new_data[f'{col}_{m}_dist'], self.new_data[f'{col}_{m}_twalk']=\
                             self.gmaps.journey_details(self.home_geo,
-                                                self.data.col,
+                                                self.new_data.col,
                                                 mode= m)
                     else:
-                        self.data[f'{col}_{m}_dur'], self.data[f'{col}_{m}_dist'],_=\
+                        self.new_data[f'{col}_{m}_dur'], self.new_data[f'{col}_{m}_dist'],_=\
                             self.gmaps.journey_details(self.home_geo,
-                                                self.data.col,
+                                                self.new_data.col,
                                                 mode= m)
             #adding the school journey details
-            self.data= pd.concat([self.data, pd.concat([self.data.apply(lambda x: pd.Series(self.gmaps.get_school_journey_details(x['home_geo'],
+            self.new_data= pd.concat([self.new_data, pd.concat([self.new_data.apply(lambda x: pd.Series(self.gmaps.get_school_journey_details(x['home_geo'],
                                                                                                 mode=m),
                                                             index=[f'school_{m}_dur',
                                                                 f'school_{m}_dist',
@@ -80,10 +87,22 @@ class Pipeline:
                                                     axis=1)],
                                 axis=1)
             #adding the nearest crossfit box and it's journey details
-            self.data= pd.concat([self.data, self.data.apply(lambda x: pd.Series(self.gmaps.get_closest_crossfitbox(x['home_geo']), index= ['crossfit_name',
+            self.new_data= pd.concat([self.new_data, self.new_data.apply(lambda x: pd.Series(self.gmaps.get_closest_crossfitbox(x['home_geo']), index= ['crossfit_name',
                                                                                                                                             'crossfit_mode',
                                                                                                                                             'crossfit_dur']),
                                                             axis= 1)],
                                 axis=1)
-            self.data.to_pickle('../data/data.pkl')
+            if len(self.data) == 0:
+                self.data= self.new_data
+            else:
+                self.data= pd.concat([self.data, self.new_data], ignore_index= True)
+            self.data.to_pickle(self.data_file_path)
             print(f'{len(unique_links)} new links updated')
+
+if __name__ == '__main__':
+    user_url= input('Enter search Url: ')
+    pipeline= Pipeline(url= user_url,
+                        api_url= 'https://www.sreality.cz/api/cs/v2/estates',
+                        data_file_path= Path('data/data.pkl'),
+                        nearby_places_path= Path('data/nearby_places.txt'))
+    pipeline.update_data()
