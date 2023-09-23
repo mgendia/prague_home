@@ -12,10 +12,10 @@ from datetime import time, datetime, timedelta
 
 
 
-class gmaps:
+class Gmaps:
     def __init__(self):
         self.gmaps = googlemaps.Client(key=os.environ.get('PragueHouseGMAPKey'))
-        self.school_address= ast.literal_eval(open(Path('data\school_address.txt'), 'r').read())
+        self.school_address= ast.literal_eval(open(Path(r'../data/school_address.txt'), 'r').read())
 
     def _get_home_location(self, address):
         '''returns the latitude and longitude of the address'''
@@ -61,8 +61,6 @@ class gmaps:
                                                             arrival_time= arrival_time)
                     journey_details_lst.append(self.__extract_journey_details(directions_result))
                 else:
-                    print(f'origin_ type: {type(origin_)}')
-                    print(f'destination_ type: {type(destination_)}')
                     journey_details_lst.append((None, None, None))
                     
             dur, dist, walk_time= zip(*journey_details_lst)
@@ -102,10 +100,10 @@ class gmaps:
         assert len(mode) > 0, 'mode must have at least one element'
         assert type(origin) == tuple, 'origin must be a tuple'
         
-        with open(Path('data/crossfit.pkl'), 'rb') as f:
+        with open(Path(r'../data/crossfit.pkl'), 'rb') as f:
             crossfit= pickle.load(f)
         combination_lst= itertools.product(zip(crossfit.name, crossfit.geo), mode)
-        details_lst= []
+        
         dur_lst={f'{gym[0]}_{mode}': math.ceil(self.gmaps.directions(origin,
                                     gym[1], mode= mode)[0].get('legs')[0]['duration']['value'] /60)\
                                         for gym, mode in combination_lst}

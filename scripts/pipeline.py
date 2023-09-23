@@ -5,14 +5,14 @@ import pickle
 
 from pathlib import Path
 from webscraper import Webscraper
-from gmaps import gmaps
+from gmaps import Gmaps
 
 class Pipeline:
     def __init__(self,
                 url,
                 api_url,
-                data_file_path:str= Path('data/data.pkl'),
-                nearby_places_path:str= Path('data/nearby_places.txt')):
+                data_file_path:str= Path(r'../data/data.pkl'),
+                nearby_places_path:str= Path(r'../data/nearby_places.txt')):
         self.url= url
         self.api_url= api_url
         self.data_file_path= data_file_path
@@ -24,14 +24,14 @@ class Pipeline:
             self.data= pd.DataFrame()
         self.new_data= None
         self.scrapper= Webscraper(self.api_url, self.url)
-        self.gmaps= gmaps()
+        self.gmaps= Gmaps()
         with open(nearby_places_path, 'r') as f:
             nearby_places= f.read().split(',')
         self.nearby_places= nearby_places
 
     def __get_unique_links(self):
-        links= self.scrapper.__get_units_url()
-        unique_links= list(set(links) - set(self.data.url))
+        links= self.scrapper.get_units_urls()
+        unique_links= list(set(links) - set(self.data.url)) if self.data.shape[0] > 0 else links
         return unique_links
 
     # def __check_df_params(self):
@@ -74,15 +74,15 @@ class Pipeline:
                                                 mode= m)
                     else:
                         self.new_data[f'{col}_{m}_dur'], self.new_data[f'{col}_{m}_dist'],_=\
-                            self.gmaps.journey_details(self.home_geo,
-                                                self.new_data.col,
+                            self.gmaps.journey_details(self.new_data.home_geo,
+                                                self.new_data[col],
                                                 mode= m)
             #adding the school journey details
             self.new_data= pd.concat([self.new_data, pd.concat([self.new_data.apply(lambda x: pd.Series(self.gmaps.get_school_journey_details(x['home_geo'],
                                                                                                 mode=m),
                                                             index=[f'school_{m}_dur',
                                                                 f'school_{m}_dist',
-                                                                f'school_{m}_twalk']),
+                                                                f'school_{m}_twalk']), 
                                                                         axis=1) for m in mode],
                                                     axis=1)],
                                 axis=1)
@@ -103,6 +103,6 @@ if __name__ == '__main__':
     user_url= input('Enter search Url: ')
     pipeline= Pipeline(url= user_url,
                         api_url= 'https://www.sreality.cz/api/cs/v2/estates',
-                        data_file_path= Path('data/data.pkl'),
-                        nearby_places_path= Path('data/nearby_places.txt'))
+                        data_file_path= Path(r'../data/data.pkl'),
+                        nearby_places_path= Path(r'../data/nearby_places.txt'))
     pipeline.update_data()

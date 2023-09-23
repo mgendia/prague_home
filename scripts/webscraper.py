@@ -1,12 +1,12 @@
-import selenium as sel
-import pandas as pd
 import numpy as np
 import re
-import os
 import requests
 import math
 from time import sleep
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service 
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -14,15 +14,21 @@ class Webscraper:
     def __init__(self, api_url, url):
         self.api_url = api_url
         self.url = url
-        self.driver = webdriver.Chrome()
-        self.driver.implicitly_wait(10)
+        
 
-    def __get_units_url(self):
+    def get_units_urls(self):
         '''extracts the url of each unit from the target url and
-        returns a list of urls'''        
+        returns a list of urls'''
+        options = Options()
+        options.add_argument('--ignore-certificate-errors')
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options) 
+        self.driver.implicitly_wait(10)        
         self.driver.get(self.url)
         soup= BeautifulSoup(self.driver.execute_script("return document.documentElement.outerHTML"), 'lxml')
-        num_pages= math.ceil(int(soup.find_all(class_= 'numero ng-binding')[-1].text.replace('\xa0', '')) / 20)
+        try:
+            num_pages= math.ceil(int(soup.find_all(class_= 'numero ng-binding')[-1].text.replace('\xa0', '')) / 20)
+        except:
+            num_pages= 1
         # unit_urls = [item.get('href') for item in soup.find_all('a',
         #                                                         class_= 'title',
         #                                                         attrs= {'href': re.compile('^/en/detail/')}
@@ -41,18 +47,18 @@ class Webscraper:
                                                                         )
                             ])
         unit_urls= list(set([link for lst in unit_urls for link in lst]))
-        self.driver.close()
+        # self.driver.close()
         return unit_urls
 
-    def extract_units_details(self):
+    def extract_units_details(self, url_list: list):
         '''loops through all the unit urls and extracts the unit details'''
-        unit_urls = self.__get_units_url()
+        # unit_urls = self.get_units_urls()
         unit_details = [['url', 'unit_id', 'Address', 'unit_type', 'bedrooms',  'unit_description',
                         'rent_price', 'floor_num', 'usable_area','garage', 'balcony', 'terrace',
                         'furnished', 'elevator', 'energy_class','Shop', 'Playground', 'tram', 
                         'metro', 'bus', 'drugstore', 'medic','pictures']]
         
-        for url in tqdm(unit_urls):         
+        for url in tqdm(url_list):         
             unit_id= url.split('/')[-1]
             req= requests.get(self.api_url + '/'+ unit_id).json()
             #Getting nearby locations lat and lon
