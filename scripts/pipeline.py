@@ -6,6 +6,7 @@ import pickle
 from pathlib import Path
 from webscraper import Webscraper
 from gmaps import Gmaps
+from score import Score
 
 class Pipeline:
     def __init__(self,
@@ -34,24 +35,6 @@ class Pipeline:
         unique_links= list(set(links) - set(self.data.url)) if self.data.shape[0] > 0 else links
         return unique_links
 
-    # def __check_df_params(self):
-    #     '''checks if the dataframe has the required columns before concatenating the old data'''
-    #     if not all(item in self.data.columns for item in ['url', 'unit_id', 'Address', 'unit_type', 'bedrooms',  'unit_description',
-    #                     'rent_price', 'floor_num', 'usable_area','garage', 'balcony', 'terrace',
-    #                     'furnished', 'elevator', 'energy_class','Shop', 'Playground', 'tram', 
-    #                     'metro', 'bus', 'drugstore', 'medic','pictures','Shop_walk_time',
-    #                     'Shop_walk_dist','Shop_walk_dur','Shop_transit_dur','Shop_transit_dist',
-    #                     'Shop_transit_twalk', 'Playground_walk_dur','Playground_walk_dist', 'Playground_transit_dur',
-    #                     'Playground_transit_dist', 'Playground_transit_twalk', 'tram_walk_dur', 'tram_walk_dist',
-    #                     'tram_transit_dur','tram_transit_dist', 'tram_transit_twalk', 'metro_walk_dur',
-    #                     'metro_walk_dist', 'metro_transit_dur', 'metro_transit_dist','metro_transit_twalk',
-    #                     'bus_walk_dur','bus_walk_dist','bus_transit_dur','bus_transit_dist',
-    #                     'bus_transit_twalk','drugstore_walk_dur', 'drugstore_walk_dist',
-    #                     'drugstore_transit_dur','drugstore_transit_dist', 'drugstore_transit_twalk',
-    #                     'medic_walk_dur','medic_walk_dist', 'medic_transit_dur', 'medic_transit_dist',
-    #                     'medic_transit_twalk', 'school_transit_dur', 'school_dist','school_transit_twalk',
-    #                     'school_walk_dur', 'school_walk_twalk', 'crossfit_name', 'crossfit_mode', 'crossfit_dur']):
-    #         raise Exception('The dataframe does not have the required columns')
 
     def update_data(self, mode:list= ['transit', 'walking']):
         '''updates the dataframe with the new data'''
@@ -96,8 +79,25 @@ class Pipeline:
                 self.data= self.new_data
             else:
                 self.data= pd.concat([self.data, self.new_data], ignore_index= True)
-            self.data.to_pickle(self.data_file_path)
-            print(f'{len(unique_links)} new links updated')
+        print(f'{len(unique_links)} new links updated')
+        
+
+    def preprocess_data(self):
+        '''preprocesses the data'''
+        nearby_places_cols = [col for col in self.data.columns if ('_dur' in col) | ('_dist' in col) | ('_twalk' in col)]
+        self.data[nearby_places_cols] = self.data[nearby_places_cols].fillna(0)
+        self.data['floor_num'] = self.data['floor_num'].fillna(0)
+        self.data[['usable_area', 'floor_num']]= self.data[['usable_area', 'floor_num']].apply(pd.to_numeric, errors='coerce')
+        
+    def score_units(self):
+        '''scores the units'''
+        score= Score(self.data, self.nearby_places)
+        score.get_score()
+        
+    def save_data(self):
+        '''saves the data to a pickle file'''
+        self.data.to_pickle(self.data_file_path)
+        
 
 if __name__ == '__main__':
     user_url= input('Enter search Url: ')
@@ -106,3 +106,6 @@ if __name__ == '__main__':
                         data_file_path= Path(r'../data/data.pkl'),
                         nearby_places_path= Path(r'../data/nearby_places.txt'))
     pipeline.update_data()
+    pipeline.preprocess_data()
+    pipeline.score_units()
+    pipeline.save_data()
