@@ -75,8 +75,6 @@ class Gmaps:
                 
             else:   
                 print('failing the else statement')
-                print(type(origin))
-                print(type(destination))
                 return None, None, None
             
     def get_school_journey_details(self,
