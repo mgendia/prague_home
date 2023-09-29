@@ -6,19 +6,22 @@ authors = ["mgendia <moutazgendia@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.13"
 plotly = "^5.16.1"
 ipykernel = "^6.25.1"
 selenium = "^4.11.2"
 xlml = "^0.1.2"
 bs4 = "^0.0.1"
 googlemaps = "^4.10.0"
-pandas = "^2.0.3"
 numpy = "^1.25.2"
 lxml = "^4.9.3"
 html5lib = "^1.1"
 tqdm = "^4.66.1"
 webdriver-manager = "^4.0.0"
+pandas = "^2.1.1"
+dash = "^2.13.0"
+dash-bootstrap-components = "^1.5.0"
+nbformat = ">=4.2.0"
 
 
 [build-system]
