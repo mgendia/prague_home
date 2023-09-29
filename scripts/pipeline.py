@@ -96,7 +96,9 @@ class Pipeline:
         
     def save_data(self):
         '''saves the data to a pickle file'''
-        self.data.to_pickle(self.data_file_path)
+        with open(self.data_file_path, 'wb') as f:
+            pickle.dump(self.data, f)
+        # self.data.to_pickle(self.data_file_path)
         
 
 if __name__ == '__main__':
