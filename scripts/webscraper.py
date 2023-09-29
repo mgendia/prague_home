@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import logging
 import requests
 import math
 from time import sleep
@@ -10,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+
 class Webscraper:
     def __init__(self, api_url, url):
         self.api_url = api_url
@@ -19,8 +21,10 @@ class Webscraper:
     def get_units_urls(self):
         '''extracts the url of each unit from the target url and
         returns a list of urls'''
+        logging.basicConfig(level=logging.INFO)
         options = Options()
         options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--headless')
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options) 
         self.driver.implicitly_wait(10)        
         self.driver.get(self.url)
