@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 
 from dash import Dash, dcc, html, dash_table, Input, Output, State
+from dash.exceptions import PreventUpdate
 from pathlib import Path
 
 
@@ -34,7 +35,7 @@ with open(Path(r'../data/data.pkl'), 'rb') as f:
     df= pickle.load(f)
 top_units_df= df.sort_values(by= ['score', 'rent_price'],
                             ascending= [False, True])\
-                                .loc[:, ['url','score', 'unit_type', 'Address', 'rent_price',
+                                .loc[:, ['url','unit_id','score', 'unit_type', 'Address', 'rent_price',
                                         'bedrooms','school_transit_dur','school_transit_twalk','usable_area', 'floor_num', 'garage',
                                         'balcony', 'terrace','furnished', 'elevator', 'energy_class']]\
                                     .rename(columns= {'unit_type': 'Unit Type',
@@ -135,6 +136,7 @@ app.layout= dbc.Container([
                                 id= 'top_table',
                                 markdown_options={"html": True},
                                 row_selectable= 'multi',
+                                # hidden_columns= ['unit_id'],
                                 page_size= 10,
                                 selected_rows=[0,1],
                                 style_data_conditional=[
@@ -244,15 +246,26 @@ def update_table(price_range, unit_types, bedroom_nums, furnished, usable_area):
     Output("pictures2", "children"),
     Output('unit1_title','children'),
     Output('unit2_title','children'),
+    Input('top_table', 'data'),
     Input("top_table", "selected_rows")
 )
 
 def update_unit_tabs(
-    # unit1_tab, unit2_tab,
-    selected_rows):
-    def create_map(df, selected_row):
+    data_table,
+    selected_rows):    
+    selected_rows= sorted(selected_rows)
+    ddf= pd.DataFrame.from_dict(data_table)
+    unit1_id= ddf.iloc[selected_rows[0]]['unit_id']
+    unit1_details= df.loc[df['unit_id']== str(unit1_id)]
+    try:
+        unit2_id= ddf.iloc[selected_rows[1]]['unit_id']
+        unit2_details= df.loc[df['unit_id']== str(unit2_id)]
+    except:
+        unit2_id= None
+        unit2_details= None
+    def create_map(home_geo):
         gmaps= googlemaps.Client(key= gmap_access_token)
-        directions_result= gmaps.directions(df.iloc[selected_row]['home_geo'],
+        directions_result= gmaps.directions(home_geo.values[0],
                                     school_geo,
                                     mode= 'transit')
         # Extract coordinates from the directions result
@@ -297,25 +310,34 @@ def update_unit_tabs(
         #                     marker_color= 'rgb(255, 0, 0)')
         return figure
         
-    def unit_pictures(df, selected_row):
+    def unit_pictures(pictures):
         return dbc.Carousel(
             items=[
-                {'key': f'pic{i}', 'src': pic, 'caption': f'Pic {i+1}'} for i, pic in enumerate(df.iloc[selected_row]['pictures'])
+                {'key': f'pic{i}', 'src': pic, 'caption': f'Pic {i+1}'}\
+                    for i, pic in enumerate(pictures.values[0])
                 ],
             controls= True,
             indicators= True,
         )
-    dict_tab= {'unit1_map': create_map(df, selected_row= selected_rows[0]),
-            'unit2_map': create_map(df, selected_row= selected_rows[1]),
-            'unit1_pictures': unit_pictures(df, selected_row= selected_rows[0]),
-            'unit2_pictures': unit_pictures(df, selected_row= selected_rows[1])}
 
-    return dict_tab.get('unit1_map'), \
-            dict_tab.get('unit2_map'),\
-                dict_tab.get('unit1_pictures'),\
-                    dict_tab.get('unit2_pictures'),\
-                        f"Unit 1: {df.iloc[selected_rows[0]]['Address']}",\
-                            f"Unit 2: {df.iloc[selected_rows[1]]['Address']}"
+    if len(selected_rows) == 0:
+        raise PreventUpdate
+    elif len(selected_rows) == 1:
+        return create_map(unit1_details['home_geo']),\
+                go.Figure(), unit_pictures(unit1_details['pictures']),\
+                    [], f"Unit 1: {unit1_details['Address'].values[0]}", ''
+    else:
+        dict_tab= {'unit1_map': create_map(unit1_details['home_geo']),
+            'unit2_map': create_map(unit2_details['home_geo']),
+            'unit1_pictures': unit_pictures(unit1_details['pictures']),
+            'unit2_pictures': unit_pictures(unit2_details['pictures'])}
+
+        return dict_tab.get('unit1_map'), \
+                dict_tab.get('unit2_map'),\
+                    dict_tab.get('unit1_pictures'),\
+                        dict_tab.get('unit2_pictures'),\
+                            f"Unit 1: {unit1_details['Address'].values[0]}",\
+                                f"Unit 2: {unit2_details['Address'].values[0]}"
 
 # @app.callback(
 #     Output('unit_specs_table', 'children'),
