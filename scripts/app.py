@@ -18,6 +18,7 @@ from pathlib import Path
 
 
 from pipeline import Pipeline
+from score import Score
 
 
 #TODO: Remove after adding to pipeline or webscrapping
@@ -33,6 +34,11 @@ app= Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 ########DATA########
 with open(Path(r'../data/data.pkl'), 'rb') as f:
     df= pickle.load(f)
+
+#TODO: Remove this after you update the pipeline with the new score
+score= Score(df, ['Shop', 'Playground', 'tram', 'metro', 'bus', 'drugstore', 'medic'])
+score.get_score()
+
 top_units_df= df.sort_values(by= ['score', 'rent_price'],
                             ascending= [False, True])\
                                 .loc[:, ['url','unit_id','score', 'unit_type', 'Address', 'rent_price',
@@ -57,6 +63,10 @@ top_units_df['Furnished']= top_units_df['Furnished'].replace('', 'Unknown').repl
 top_units_df['Elevator']= top_units_df['Elevator'].replace('', 'Unknown').replace(True, 'Yes').replace(False, 'No')
 
 school_geo= ast.literal_eval(open(Path(r'../data/school_address.txt'), 'r').read())
+
+
+
+
 ########LAYOUT########
 
 app.layout= dbc.Container([
@@ -163,18 +173,19 @@ app.layout= dbc.Container([
                     dbc.CardHeader(
                         dbc.Tabs(
                             [
+                                dbc.Tab(label="Pictures",tab_id= 'pic1', id="pictures1"),                                
+                                dbc.Tab(label="Score Breakdown",tab_id= 'score1_tab',children=[
+                                            dcc.Graph(id= 'score1')]),
                                 dbc.Tab(label="Unit Map",
                                         tab_id="unit1_map",
                                         children=[
                                                 dcc.Graph(id= 'unit1_map_graph'
                                                         )
                                             
-                                                ]),
-                                dbc.Tab(label="Nearby Places", id="nearby1_places"),
-                                dbc.Tab(label="Pictures", id="pictures1"),
+                                                ]),                                
                             ],
                             id="unit1_tabs",
-                            active_tab="unit1_map",
+                            active_tab='pic1',
                         )
                     ),
                     ]
@@ -188,6 +199,10 @@ app.layout= dbc.Container([
                     dbc.CardHeader(
                         dbc.Tabs(
                             [
+                                dbc.Tab(label="Pictures",tab_id= 'pic2', id="pictures2", children=[]),
+                                dbc.Tab(label="Score Breakdown",tab_id= 'score2_tab',
+                                        children=[
+                                            dcc.Graph(id= 'score2')]),
                                 dbc.Tab(label="Unit Map",
                                         tab_id="unit2_map",
                                         children=[
@@ -195,12 +210,10 @@ app.layout= dbc.Container([
                                                         )
                                             
                                                 ]
-                                        ),
-                                dbc.Tab(label="Nearby Places", id="nearby2_places", children=[]),
-                                dbc.Tab(label="Pictures", id="pictures2", children=[]),
+                                        ),            
                             ],
                             id="unit2_tabs",
-                            active_tab="unit2_map",
+                            active_tab='pic2',
                         )
                     ),
                     ]
@@ -246,6 +259,8 @@ def update_table(price_range, unit_types, bedroom_nums, furnished, usable_area):
     Output("pictures2", "children"),
     Output('unit1_title','children'),
     Output('unit2_title','children'),
+    Output("score1", "figure"),
+    Output("score2", "figure"),
     Input('top_table', 'data'),
     Input("top_table", "selected_rows")
 )
@@ -320,24 +335,44 @@ def update_unit_tabs(
             indicators= True,
         )
 
+    def waterfall(unit_id):
+        score_dict= df.loc[df['unit_id']== str(unit_id)]['score_dict'].values[0]
+        score_list= list(score_dict.values())
+        total_score= sum(score_list)
+        score_list.append(total_score)
+        return go.Figure(
+                        go.Waterfall(
+                            name= "Score", orientation= "v",
+                            measure= ['relative' for _ in range(len(score_dict))] + ['total'],
+                            x= list(score_dict.keys()) + ["Net Score"],
+                            textposition= "outside",
+                            text= [f'{v}' for v in score_list],
+                            y= score_list,
+                            connector= {"line": {"color": "rgb(63, 63, 63)"}},
+                                ))
+                                
+        
+    
     if len(selected_rows) == 0:
         raise PreventUpdate
     elif len(selected_rows) == 1:
         return create_map(unit1_details['home_geo']),\
                 go.Figure(), unit_pictures(unit1_details['pictures']),\
-                    [], f"Unit 1: {unit1_details['Address'].values[0]}", ''
+                    [], f"Unit 1: {unit1_details['Address'].values[0]}", '',\
+                        waterfall(unit1_details['unit_id'].values[0]), []
     else:
-        dict_tab= {'unit1_map': create_map(unit1_details['home_geo']),
-            'unit2_map': create_map(unit2_details['home_geo']),
-            'unit1_pictures': unit_pictures(unit1_details['pictures']),
-            'unit2_pictures': unit_pictures(unit2_details['pictures'])}
+        return create_map(unit1_details['home_geo']), \
+                    create_map(unit2_details['home_geo']),\
+                        unit_pictures(unit1_details['pictures']),\
+                            unit_pictures(unit2_details['pictures']),\
+                                f"Unit 1: {unit1_details['Address'].values[0]}",\
+                                    f"Unit 2: {unit2_details['Address'].values[0]}",\
+                                        waterfall(unit1_details['unit_id'].values[0]),\
+                                            waterfall(unit2_details['unit_id'].values[0])
 
-        return dict_tab.get('unit1_map'), \
-                dict_tab.get('unit2_map'),\
-                    dict_tab.get('unit1_pictures'),\
-                        dict_tab.get('unit2_pictures'),\
-                            f"Unit 1: {unit1_details['Address'].values[0]}",\
-                                f"Unit 2: {unit2_details['Address'].values[0]}"
+    
+
+
 
 # @app.callback(
 #     Output('unit_specs_table', 'children'),
