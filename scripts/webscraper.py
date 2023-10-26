@@ -21,7 +21,7 @@ class Webscraper:
     def get_units_urls(self):
         '''extracts the url of each unit from the target url and
         returns a list of urls'''
-        logging.basicConfig(level=logging.INFO)
+        # logging.basicConfig(level=logging.INFO)
         options = Options()
         options.add_argument('--ignore-certificate-errors')
         options.add_argument('--headless')
@@ -64,7 +64,10 @@ class Webscraper:
         
         for url in tqdm(url_list):         
             unit_id= url.split('/')[-1]
+            print('scrapping unit: ', unit_id)
             req= requests.get(self.api_url + '/'+ unit_id).json()
+            #Adding unit url
+            unit_link= self.api_url+ url
             #Getting nearby locations lat and lon
             nearby= {item.get('name'): (item.get('lat'), item.get('lon')) for item in req.get('poi')}
             shop= nearby.get('Shop')
@@ -85,11 +88,7 @@ class Webscraper:
             else:
                 unit_type= 'other'
                 num_bedrooms= None
-            #Getting the address
-            try:
-                address= re.findall(r'(?<= rent )([\w\s-]+)(?=;)', ad_title)[0]
-            except:
-                address= re.findall(r'(?<= sale )([\w\s-]+)(?=;)', ad_title)[0]
+            address= req['seo']['locality']
             unit_description= req['text']['value'].replace('\xa0', '')
             rent_price= req.get('recommendations_data').get('price_summary_czk')            
             garage= req.get('recommendations_data').get('garage')
@@ -114,7 +113,7 @@ class Webscraper:
             #Getting the pictures
             img_lst= req.get('_embedded').get('images')
             pictures= [img_lst[i].get('_links').get('view').get('href') for i in range(len(img_lst))]
-            unit_details.append([url,unit_id, address, unit_type, num_bedrooms, unit_description, 
+            unit_details.append([unit_link,unit_id, address, unit_type, num_bedrooms, unit_description, 
                                 rent_price, floor_num, usable_area, garage, balcony, terrace,
                                 furnished, elevator, energy_class, shop,
                                 playground, tram,  metro, bus, drugstore, medic,  pictures])
