@@ -33,13 +33,13 @@ class Pipeline:
     def __get_unique_links(self):
         links= self.scrapper.get_units_urls()
         unique_links= list(set(links) - set(self.data.url)) if self.data.shape[0] > 0 else links
-        return unique_links
+        return unique_links, links
 
 
     def update_data(self, mode:list= ['transit', 'walking']):
         '''updates the dataframe with the new data'''
         # self.__check_df_params()
-        unique_links= self.__get_unique_links()
+        unique_links, total_links= self.__get_unique_links()
         if len(unique_links) == 0:
             print('No new units to update')
         else:
@@ -78,7 +78,7 @@ class Pipeline:
             if len(self.data) == 0:
                 self.data= self.new_data
             else:
-                self.data= pd.concat([self.data, self.new_data], ignore_index= True)
+                self.data= pd.concat([self.data, self.new_data], ignore_index= True).loc[self.data['url'].isin(total_links)]
         print(f'{len(unique_links)} new links updated')
         
 
@@ -102,12 +102,14 @@ class Pipeline:
         
 
 if __name__ == '__main__':
-    user_url= input('Enter search Url: ')
-    pipeline= Pipeline(url= user_url,
-                        api_url= 'https://www.sreality.cz/api/cs/v2/estates',
-                        data_file_path= Path(r'../data/data.pkl'),
-                        nearby_places_path= Path(r'../data/nearby_places.txt'))
-    pipeline.update_data()
-    pipeline.preprocess_data()
-    pipeline.score_units()
-    pipeline.save_data()
+    with open('../data/search_urls.txt', 'r') as f:
+        search_urls= f.read().split('\n')
+    for url in search_urls:
+        pipeline= Pipeline(url= url,
+                            api_url= 'https://www.sreality.cz/api/cs/v2/estates',
+                            data_file_path= Path(r'../data/data.pkl'),
+                            nearby_places_path= Path(r'../data/nearby_places.txt'))
+        pipeline.update_data()
+        pipeline.preprocess_data()
+        pipeline.score_units()
+        pipeline.save_data()
