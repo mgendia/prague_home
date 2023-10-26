@@ -21,8 +21,7 @@ from pipeline import Pipeline
 from score import Score
 
 
-#TODO: Remove after adding to pipeline or webscrapping
-main_url= 'https://www.sreality.cz'
+
 
 #getting secret keys for APIs
 mapbox_access_token = os.environ.get('MPBOX_PUBLIC_KEY')
@@ -35,9 +34,6 @@ app= Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 with open(Path(r'../data/data.pkl'), 'rb') as f:
     df= pickle.load(f)
 
-#TODO: Remove this after you update the pipeline with the new score
-score= Score(df, ['Shop', 'Playground', 'tram', 'metro', 'bus', 'drugstore', 'medic'])
-score.get_score()
 
 top_units_df= df.sort_values(by= ['score', 'rent_price'],
                             ascending= [False, True])\
@@ -58,7 +54,7 @@ top_units_df= df.sort_values(by= ['score', 'rent_price'],
                                                     'energy_class': 'Energy Class',
                                                     'school_transit_dur': 'Time to School(PT)',
                                                     'school_transit_twalk': 'Total Walk time(PT)'})
-top_units_df['Address']= top_units_df.apply(lambda x: f"<a href= '{main_url}{x.url}' target= '_blank'> {x.Address}", axis= 1)
+top_units_df['Address']= top_units_df.apply(lambda x: f"<a href= 'https://www.sreality.cz{x.url}' target= '_blank'> {x.Address}", axis= 1)
 top_units_df['Furnished']= top_units_df['Furnished'].replace('', 'Unknown').replace(True, 'Yes').replace(False, 'No')
 top_units_df['Elevator']= top_units_df['Elevator'].replace('', 'Unknown').replace(True, 'Yes').replace(False, 'No')
 
@@ -320,9 +316,9 @@ def update_unit_tabs(
             zoom=12, 
         )
     )
-        # figure.update_traces(marker_symbol= 'lodging',
-        #                     marker_size= 14,
-        #                     marker_color= 'rgb(255, 0, 0)')
+        figure.update_traces(marker_symbol= 'lodging',
+                            marker_size= 14,
+                            marker_color= 'rgb(255, 0, 0)')
         return figure
         
     def unit_pictures(pictures):
@@ -334,24 +330,30 @@ def update_unit_tabs(
             controls= True,
             indicators= True,
         )
-
+    #BUG: Fix what is presented as text and values for the waterfall
     def waterfall(unit_id):
         score_dict= df.loc[df['unit_id']== str(unit_id)]['score_dict'].values[0]
-        score_list= list(score_dict.values())
-        total_score= sum(score_list)
-        score_list.append(total_score)
-        return go.Figure(
+        scores_lst= [val for key, val in score_dict.items() if 'score' in key]
+        keys_lst= [key.split('_')[0] for key, val in score_dict.items() if 'score' in key]
+        values_lst= [val for key, val in score_dict.items() if 'score' not in key]
+        total_score= sum(scores_lst)
+        scores_lst.append(total_score)
+        figure=  go.Figure(
                         go.Waterfall(
                             name= "Score", orientation= "v",
-                            measure= ['relative' for _ in range(len(score_dict))] + ['total'],
-                            x= list(score_dict.keys()) + ["Net Score"],
+                            measure= ['relative' for _ in range(len(keys_lst))] + ['total'],
+                            x= keys_lst + ["Net Score"],
                             textposition= "outside",
-                            text= [f'{v}' for v in score_list],
-                            y= score_list,
+                            text= [f'{v}'  for v in values_lst],
+                            y= scores_lst,
                             connector= {"line": {"color": "rgb(63, 63, 63)"}},
                                 ))
                                 
-        
+        figure.update_layout(
+                    hovermode='closest',        
+                    margin={"r":5,"t":5,"l":5,"b":5},
+                    )
+        return figure
     
     if len(selected_rows) == 0:
         raise PreventUpdate
