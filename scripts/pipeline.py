@@ -78,7 +78,9 @@ class Pipeline:
             if len(self.data) == 0:
                 self.data= self.new_data
             else:
-                self.data= pd.concat([self.data, self.new_data], ignore_index= True).loc[self.data['url'].isin(total_links)]
+                self.new_data['score'], self.new_data['score_dict']= np.nan, np.nan
+                self.data= pd.concat([self.data, self.new_data], ignore_index= True, axis=0)
+                self.data= self.data.loc[self.data['url'].isin(total_links)]
         print(f'{len(unique_links)} new links updated')
         
 
@@ -109,7 +111,12 @@ if __name__ == '__main__':
                             api_url= 'https://www.sreality.cz/api/cs/v2/estates',
                             data_file_path= Path(r'../data/data.pkl'),
                             nearby_places_path= Path(r'../data/nearby_places.txt'))
+        print('updating data...')
         pipeline.update_data()
+        print('preprocessing data...')
         pipeline.preprocess_data()
+        print('scoring units...')
         pipeline.score_units()
+        print('saving data...')
         pipeline.save_data()
+        print('data saved!')
