@@ -80,12 +80,15 @@ class Gmaps:
     def get_school_journey_details(self,
                                 origin,
                                 mode= 'transit',
-                                arrival_time= datetime.strptime('2023-10-01 07:20:00 GMT',
-                                                                    '%Y-%m-%d %H:%M:%S %Z') + timedelta(hours= 2)):
+                                arrival_time= datetime.strptime(
+                                                    datetime.strftime(
+                                                            datetime.today() + timedelta(days= (14 - datetime.today().weekday()) % 7)
+                                                            , format= '%Y-%m-%d')+ ' 07:30:00 GMT',
+                                                    '%Y-%m-%d %H:%M:%S %Z') + timedelta(hours= 2)):
         '''returns the total duration, total distance, and total walking time from origin to school'''
         
-        return self.journey_details(origin,
-                                    self.school_address,
+        return self.journey_details(origin= origin,
+                                    destination= self.school_address,
                                     mode= mode,
                                     arrival_time=arrival_time)
 
