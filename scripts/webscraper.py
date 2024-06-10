@@ -25,6 +25,7 @@ class Webscraper:
         options = Options()
         options.add_argument('--ignore-certificate-errors')
         options.add_argument('--headless')
+        options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options) 
         self.driver.implicitly_wait(10)        
         self.driver.get(self.url)
@@ -64,8 +65,7 @@ class Webscraper:
         
         for url in tqdm(url_list):         
             unit_id= url.split('/')[-1]
-            print('scrapping unit: ', unit_id)
-            req= requests.get(self.api_url + '/'+ unit_id).json()
+            req= requests.get(self.api_url + '/'+ unit_id.strip()).json()
             #Adding unit url
             unit_link= self.api_url+ url
             #Getting nearby locations lat and lon
@@ -78,8 +78,9 @@ class Webscraper:
             drugstore= nearby.get('Drugstore')
             medic= nearby.get('Medic')
             #Getting the unit type and number of bedrooms
-            ad_title= req['meta_description'].replace('\xa0', '')
-            if ('Family house' in ad_title) | ('Villa' in ad_title):
+            ad_title= req['meta_description'].replace('\xa0', '').lower()
+            if ('family house' in ad_title) | ('villa' in ad_title) |\
+                ('villas' in ad_title)| ('house' in ad_title):
                 unit_type= 'house'
                 num_bedrooms= req.get('recommendations_data').get('room_count_cb')
             elif ('apartment' in url) | ('flat' in url):
@@ -95,20 +96,16 @@ class Webscraper:
             balcony= req.get('recommendations_data').get('balcony')
             terrace= req.get('recommendations_data').get('terrace')
             usable_area= [ item['value'] for item in req['items']\
-                        if item['name']== 'Usable area'][0]
-            floor_num= [item['value'] for item in req['items']\
+                        if item['name']== 'Usable area']
+            floor_num= [re.findall(r'\w+', item['value']) for item in req['items']\
                                 if item['name']== 'Floor']
-            floor_num= re.findall(r'\w+', floor_num[0])[0] if floor_num != [] else None
-            energy_class= [item['value'] for item in req['items']\
+            energy_class= [re.findall(r'(?<=^Class )([a-zA-Z]{1})',
+                                    item['value']) for item in req['items']\
                         if item['name']== 'Energy Performance Rating']
-            energy_class= re.findall(r'(?<=^Class )([a-zA-Z]{1})',
-                                    energy_class[0])[0] if energy_class != [] else None
             
             #Getting the furnished and elevator details
-            furnished_lst =[item['value']  for item in req['items'] if item['name'] == 'Furnished']            
-            furnished= furnished_lst[0] if furnished_lst != [] else ''
-            elevator_lst =[item['value']  for item in req['items'] if item['name'] == 'Elevator']   
-            elevator= elevator_lst[0] if elevator_lst != [] else ''
+            furnished =[item['value']  for item in req['items'] if item['name'] == 'Furnished']           
+            elevator =[item['value']  for item in req['items'] if item['name'] == 'Elevator']
             
             #Getting the pictures
             img_lst= req.get('_embedded').get('images')
