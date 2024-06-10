@@ -1,2 +1,1 @@
 https://www.sreality.cz/en/search/to-rent/houses/praha?disposition=2-bedrooms,3-bedrooms,4-bedrooms&status=very-good-condition,good-condition,new-build,renovated&min-price=35000&max-price=45000
-https://www.sreality.cz/en/search/to-rent/apartments/praha?energy_efficiency_rating_search=1%7C2%7C3%7C4&disposition=2%2B1,3%2Bkt,3%2B1,4%2Bkt,4%2B1&status=very-good-condition,good-condition,new-build,project,renovated&min-price=30000&max-price=45000
