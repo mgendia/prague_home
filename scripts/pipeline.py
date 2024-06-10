@@ -5,6 +5,7 @@ import pickle
 
 from pathlib import Path
 from webscraper import Webscraper
+from preprocess import Preprocess
 from gmaps import Gmaps
 from score import Score
 
@@ -25,6 +26,7 @@ class Pipeline:
             self.data= pd.DataFrame()
         self.new_data= None
         self.scrapper= Webscraper(self.api_url, self.url)
+        self.preprocess= Preprocess(self.data)
         self.gmaps= Gmaps()
         with open(nearby_places_path, 'r') as f:
             nearby_places= f.read().split(',')
@@ -83,13 +85,14 @@ class Pipeline:
                 self.data= self.data.loc[self.data['url'].isin(total_links)]
         print(f'{len(unique_links)} new links updated')
         
-
     def preprocess_data(self):
-        '''preprocesses the data'''
-        nearby_places_cols = [col for col in self.data.columns if ('_dur' in col) | ('_dist' in col) | ('_twalk' in col)]
-        self.data[nearby_places_cols] = self.data[nearby_places_cols].fillna(0)
-        self.data['floor_num'] = self.data['floor_num'].fillna(0)
-        self.data[['usable_area', 'floor_num']]= self.data[['usable_area', 'floor_num']].apply(pd.to_numeric, errors='coerce')
+        '''preprocess the data'''
+        print(self.data.columns)
+        self.preprocess.clean_lst_columns(col_lst= ['elevator',
+                                                'furnished', 'usable_area',
+                                                'energy_class'])
+        self.preprocess.clean_data_format()
+    
         
     def score_units(self):
         '''scores the units'''
