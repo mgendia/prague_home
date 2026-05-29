@@ -31,7 +31,8 @@ gmap_access_token= os.environ.get('PragueHouseGMAPKey')
 app= Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 ########DATA########
-with open(Path(r'../data/data.pkl'), 'rb') as f:
+BASE = Path(__file__).parent
+with open(BASE / '../data/data.pkl', 'rb') as f:
     df= pickle.load(f)
 
 
@@ -58,7 +59,8 @@ top_units_df['Address']= top_units_df.apply(lambda x: f"<a href= 'https://www.sr
 top_units_df['Furnished']= top_units_df['Furnished'].replace('', 'Unknown').replace(True, 'Yes').replace(False, 'No')
 top_units_df['Elevator']= top_units_df['Elevator'].replace('', 'Unknown').replace(True, 'Yes').replace(False, 'No')
 
-school_geo= ast.literal_eval(open(Path(r'../data/school_address.txt'), 'r').read())
+with open(BASE / '../data/school_address.txt', 'r', encoding='utf-8') as f:
+    school_geo= ast.literal_eval(f.read())
 
 
 
@@ -235,9 +237,9 @@ def update_table(price_range, unit_types, bedroom_nums, furnished, usable_area):
     ddf= top_units_df.copy()
     
     
-    filtered_data= ddf.loc[(top_units_df['Rent Price'] >= price_range[0]) & (ddf['Rent Price'] <= price_range[1]) &
+    filtered_data= ddf.loc[(ddf['Rent Price'] >= price_range[0]) & (ddf['Rent Price'] <= price_range[1]) &
                         (ddf['Unit Type'].isin(unit_types)) &
-                        (ddf['Bedrooms'].apply(lambda x: re.findall(r'\d+', str(x))[0]).astype(int).isin(bedroom_nums)) &
+                        (ddf['Bedrooms'].apply(lambda x: (re.findall(r'\d+', str(x)) or ['0'])[0]).astype(int).isin(bedroom_nums)) &
                         (ddf['Furnished'].isin(furnished))&
                         (ddf['Area'] >= usable_area[0]) & (ddf['Area'] <= usable_area[1])]
 
@@ -268,10 +270,14 @@ def update_unit_tabs(
     ddf= pd.DataFrame.from_dict(data_table)
     unit1_id= ddf.iloc[selected_rows[0]]['unit_id']
     unit1_details= df.loc[df['unit_id']== str(unit1_id)]
+    if unit1_details.empty:
+        raise PreventUpdate
     try:
         unit2_id= ddf.iloc[selected_rows[1]]['unit_id']
         unit2_details= df.loc[df['unit_id']== str(unit2_id)]
-    except:
+        if unit2_details.empty:
+            unit2_details= None
+    except (IndexError, KeyError):
         unit2_id= None
         unit2_details= None
     def create_map(home_geo):
@@ -330,12 +336,13 @@ def update_unit_tabs(
             controls= True,
             indicators= True,
         )
-    #BUG: Fix what is presented as text and values for the waterfall
     def waterfall(unit_id):
         score_dict= df.loc[df['unit_id']== str(unit_id)]['score_dict'].values[0]
-        scores_lst= [val for key, val in score_dict.items() if 'score' in key]
-        keys_lst= [key.split('_')[0] for key, val in score_dict.items() if 'score' in key]
-        values_lst= [val for key, val in score_dict.items() if 'score' not in key]
+        pairs= [(k.split('_score')[0], score_dict.get(k.replace('_score', ''), ''), v)
+                for k, v in score_dict.items() if k.endswith('_score')]
+        keys_lst=   [p[0] for p in pairs]
+        values_lst= [p[1] for p in pairs]
+        scores_lst= [p[2] for p in pairs]
         total_score= sum(scores_lst)
         scores_lst.append(total_score)
         figure=  go.Figure(
@@ -360,8 +367,8 @@ def update_unit_tabs(
     elif len(selected_rows) == 1:
         return create_map(unit1_details['home_geo']),\
                 go.Figure(), unit_pictures(unit1_details['pictures']),\
-                    [], f"Unit 1: {unit1_details['Address'].values[0]}", '',\
-                        waterfall(unit1_details['unit_id'].values[0]), []
+                    html.Div(), f"Unit 1: {unit1_details['Address'].values[0]}", '',\
+                        waterfall(unit1_details['unit_id'].values[0]), go.Figure()
     else:
         return create_map(unit1_details['home_geo']), \
                     create_map(unit2_details['home_geo']),\

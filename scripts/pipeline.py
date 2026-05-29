@@ -28,8 +28,8 @@ class Pipeline:
         self.scrapper= Webscraper(self.api_url, self.url)
         self.preprocess= Preprocess(self.data)
         self.gmaps= Gmaps()
-        with open(nearby_places_path, 'r') as f:
-            nearby_places= f.read().split(',')
+        with open(nearby_places_path, 'r', encoding='utf-8') as f:
+            nearby_places= [p.strip() for p in f.read().split(',')]
         self.nearby_places= nearby_places
 
     def __get_unique_links(self):
@@ -52,10 +52,10 @@ class Pipeline:
             #adding the nearby journey details
             for col in self.nearby_places:
                 for m in mode:
-                    if m == 'tranist':
+                    if m == 'transit':
                         self.new_data[f'{col}_{m}_dur'], self.new_data[f'{col}_{m}_dist'], self.new_data[f'{col}_{m}_twalk']=\
-                            self.gmaps.journey_details(self.home_geo,
-                                                self.new_data.col,
+                            self.gmaps.journey_details(self.new_data['home_geo'],
+                                                self.new_data[col],
                                                 mode= m)
                     else:
                         self.new_data[f'{col}_{m}_dur'], self.new_data[f'{col}_{m}_dist'],_=\

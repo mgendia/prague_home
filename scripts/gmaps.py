@@ -15,11 +15,14 @@ from datetime import time, datetime, timedelta
 class Gmaps:
     def __init__(self):
         self.gmaps = googlemaps.Client(key=os.environ.get('PragueHouseGMAPKey'))
-        self.school_address= ast.literal_eval(open(Path(r'../data/school_address.txt'), 'r').read())
+        with open(Path(r'../data/school_address.txt'), 'r', encoding='utf-8') as f:
+            self.school_address= ast.literal_eval(f.read())
 
     def _get_home_location(self, address):
         '''returns the latitude and longitude of the address'''
         geocode_result = self.gmaps.geocode(address)
+        if not geocode_result:
+            return None
         return tuple(geocode_result[0]['geometry']['location'].values())
 
     
@@ -51,10 +54,10 @@ class Gmaps:
 
     def journey_details(self, origin, destination, mode= 'transit', arrival_time= None):
         '''returns the total duration, total distance, and total walking time from origin to destination'''
-        if (type(origin) == pd.Series)  & (type(destination) == pd.Series):
+        if (type(origin) == pd.Series) and (type(destination) == pd.Series):
             journey_details_lst= []
             for origin_, destination_ in zip(origin, destination):                
-                if (type(origin_) == tuple)  & (type(destination_) == tuple):
+                if (type(origin_) == tuple) and (type(destination_) == tuple):
                     directions_result = self.__get_directions(origin= origin_,
                                                             destination= destination_,
                                                             mode= mode,
@@ -66,7 +69,7 @@ class Gmaps:
             dur, dist, walk_time= zip(*journey_details_lst)
             return dur, dist, walk_time
         else:
-            if (type(origin) == tuple)  & (type(destination) == tuple):
+            if (type(origin) == tuple) and (type(destination) == tuple):
                 directions_result = self.__get_directions(origin= origin,
                                                         destination= destination,
                                                         mode= mode,
@@ -74,8 +77,7 @@ class Gmaps:
                 return self.__extract_journey_details(directions_result)
                 
             else:   
-                print('failing the else statement')
-                return None, None, None
+                raise ValueError(f'journey_details: expected tuple origins/destinations, got {type(origin)}/{type(destination)}')
             
     def get_school_journey_details(self,
                                 origin,
