@@ -87,6 +87,9 @@ class Pipeline:
         
     def preprocess_data(self):
         '''preprocess the data'''
+        if self.data.empty:
+            print('No data to preprocess, skipping')
+            return
         print(self.data.columns)
         self.preprocess.clean_lst_columns(col_lst= ['elevator',
                                                 'furnished', 'usable_area',
@@ -96,6 +99,9 @@ class Pipeline:
         
     def score_units(self):
         '''scores the units'''
+        if self.data.empty:
+            print('No data to score, skipping')
+            return
         score= Score(self.data, self.nearby_places)
         score.get_score()
         
@@ -111,7 +117,7 @@ if __name__ == '__main__':
         search_urls= f.read().split('\n')
     for url in search_urls:
         pipeline= Pipeline(url= url,
-                            api_url= 'https://www.sreality.cz/api/cs/v2/estates',
+                            api_url= 'https://www.sreality.cz',
                             data_file_path= Path(r'../data/data.pkl'),
                             nearby_places_path= Path(r'../data/nearby_places.txt'))
         print('updating data...')
