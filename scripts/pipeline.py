@@ -90,6 +90,7 @@ class Pipeline:
         if self.data.empty:
             print('No data to preprocess, skipping')
             return
+        self.preprocess.data = self.data  # sync: Preprocess was init'd before update_data ran
         print(self.data.columns)
         self.preprocess.clean_lst_columns(col_lst= ['elevator',
                                                 'furnished', 'usable_area',
