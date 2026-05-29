@@ -90,24 +90,27 @@ class Webscraper:
 
         return list(set([link for lst in unit_urls for link in lst]))
 
-    def _fetch_estate_ssr(self, url):
-        '''Fetch a detail page via requests (using consent cookies) and return
-        the estate object from __NEXT_DATA__.'''
+    def _build_session(self):
+        '''Build a requests.Session pre-loaded with consent cookies and browser headers.'''
         session = requests.Session()
         for name, value in self.consent_cookies.items():
             session.cookies.set(name, value, domain='.sreality.cz')
-        headers = {
+        session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-        }
-        r = session.get(f'https://www.sreality.cz{url}', headers=headers, timeout=20)
+        })
+        return session
+
+    def _fetch_estate_ssr(self, url, session):
+        '''Fetch a detail page and return the estate object from __NEXT_DATA__.'''
+        r = session.get(f'https://www.sreality.cz{url}', timeout=20)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
         nd = soup.find('script', {'id': '__NEXT_DATA__'})
         if not nd:
             raise ValueError('No __NEXT_DATA__ in page response')
-        d = json.loads(nd.string)
+        d = json.loads(nd.get_text())
         queries = d['props']['pageProps']['dehydratedState']['queries']
         estate_q = next((q for q in queries if q['queryKey'][0] == 'estate'), None)
         if not estate_q:
@@ -122,11 +125,12 @@ class Webscraper:
                         'furnished', 'elevator', 'energy_class', 'Shop', 'Playground', 'tram',
                         'metro', 'bus', 'drugstore', 'medic', 'pictures']]
 
+        session = self._build_session()
         for url in tqdm(url_list):
             unit_id = url.split('/')[-1]
             try:
-                estate = self._fetch_estate_ssr(url)
-            except (requests.RequestException, ValueError, KeyError) as e:
+                estate = self._fetch_estate_ssr(url, session)
+            except (requests.RequestException, ValueError, KeyError, TypeError) as e:
                 print(f'Failed to fetch unit {unit_id}: {e}')
                 continue
 
@@ -139,14 +143,14 @@ class Webscraper:
             ad_title = (estate.get('name', '') or '').lower()
             if any(t in ad_title for t in ['family house', 'villa', 'villas', 'house']):
                 unit_type = 'house'
-                num_bedrooms = (params.get('roomCountCb') or {}).get('name', '')
+                num_bedrooms = str((params.get('roomCountCb') or {}).get('value', ''))
             elif any(t in url for t in ['apartment', 'flat']):
                 unit_type = 'apartment'
                 result = re.findall(r'(?<=en/detail/lease/flat/)([a-z0-9\-+]+)(?=/)', url)
                 num_bedrooms = result[0] if result else (params.get('roomCountCb') or {}).get('name', '')
             else:
                 unit_type = 'other'
-                num_bedrooms = (params.get('roomCountCb') or {}).get('name', '')
+                num_bedrooms = str((params.get('roomCountCb') or {}).get('value', ''))
 
             unit_description = estate.get('description', '')
             rent_price = estate.get('priceSummaryCzk')
@@ -160,8 +164,8 @@ class Webscraper:
             usable_area = [str(usable_area_val)] if usable_area_val is not None else []
 
             garage = params.get('garage')
-            balcony = [params.get('balcony', '')]
-            terrace = [params.get('terrace', '')]
+            balcony = params.get('balcony')
+            terrace = params.get('terrace')
             furnished = [(params.get('furnished') or {}).get('name', '')]
             elevator = [(params.get('elevator') or {}).get('name', '')]
             energy_rating = (params.get('energyEfficiencyRating') or {}).get('name', '')
