@@ -167,9 +167,10 @@ class Webscraper:
             energy_rating = (params.get('energyEfficiencyRating') or {}).get('name', '')
             energy_class = [[energy_rating]]
 
-            # Nearby POIs
+            # Nearby POIs — guard against non-dict entries in the list
             pois = {p.get('name'): (p.get('lat'), p.get('lon'))
-                    for p in (estate.get('extendedPois') or []) if p.get('name')}
+                    for p in (estate.get('extendedPois') or [])
+                    if isinstance(p, dict) and p.get('name')}
             shop = pois.get('Shop')
             playground = pois.get('Playground')
             tram = pois.get('Tram')
