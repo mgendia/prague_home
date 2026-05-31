@@ -268,6 +268,9 @@ def update_unit_tabs(
     selected_rows):    
     selected_rows= sorted(selected_rows)
     ddf= pd.DataFrame.from_dict(data_table)
+    selected_rows= [r for r in selected_rows if r < len(ddf)]
+    if not selected_rows:
+        raise PreventUpdate
     unit1_id= ddf.iloc[selected_rows[0]]['unit_id']
     unit1_details= df.loc[df['unit_id']== str(unit1_id)]
     if unit1_details.empty:

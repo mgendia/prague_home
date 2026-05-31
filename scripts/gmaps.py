@@ -94,6 +94,32 @@ class Gmaps:
                                     mode= mode,
                                     arrival_time=arrival_time)
 
+    PLACE_TYPE_MAP = {
+        'Shop':       'supermarket',
+        'Playground': 'park',
+        'tram':       'transit_station',
+        'metro':      'subway_station',
+        'bus':        'bus_station',
+        'drugstore':  'pharmacy',
+        'medic':      'hospital',
+    }
+
+    def get_nearest_poi(self, home_geo, category):
+        '''Return (lat, lng) of the nearest Google Places result for a category,
+        or None if unmapped or no results found.'''
+        place_type = self.PLACE_TYPE_MAP.get(category)
+        if not place_type or not isinstance(home_geo, tuple):
+            return None
+        results = self.gmaps.places_nearby(
+            location=home_geo,
+            rank_by='distance',
+            type=place_type
+        ).get('results', [])
+        if not results:
+            return None
+        loc = results[0]['geometry']['location']
+        return (loc['lat'], loc['lng'])
+
     def get_closest_crossfitbox(self,
                                 origin,
                                 mode:list= ['transit']):

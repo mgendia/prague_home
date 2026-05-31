@@ -49,6 +49,12 @@ class Pipeline:
             self.new_data= pd.DataFrame(details[1:], columns= details[0])
             self.new_data.insert(self.new_data.columns.get_loc('Address')+1, 'home_geo',
                             self.new_data.Address.map(self.gmaps._get_home_location))
+            # Fill POI coordinates via Google Maps Places API (extendedPois
+            # no longer provides coordinates in the new sreality.cz API)
+            for col in self.nearby_places:
+                self.new_data[col] = self.new_data['home_geo'].apply(
+                    lambda geo: self.gmaps.get_nearest_poi(geo, col)
+                )
             #adding the nearby journey details
             for col in self.nearby_places:
                 for m in mode:
